@@ -111,7 +111,7 @@ input[type=checkbox]{width:16px;height:16px;accent-color:#3b82f6}
 <div class="page active" id="page-home">
   <div style="height:16px"></div>
 
-  <button class="btn btn-scan" onclick="showPage('page-scan')">
+  <button id="scan-page-btn" class="btn btn-scan" onclick="showPage('page-scan')">
     📷 バーコードをスキャン
   </button>
 
@@ -203,7 +203,7 @@ async function doSearch() {
     showPage('page-results');
     renderResults();
   } catch(e) {
-    alert('エラーが発生しました。もう一度試してください。');
+    alert('エラーが発生しました。');
   } finally {
     document.getElementById('home-loading').style.display = 'none';
     document.querySelector('#page-home .card').style.display = 'block';
@@ -211,7 +211,7 @@ async function doSearch() {
   }
 }
 
-// ── 結果ルンダリング ──
+// ── 結果レンダリング ──
 function renderResults() {
   const profitOnly = document.getElementById('profitOnly').checked;
   const filterText = document.getElementById('filterText').value.toLowerCase();
@@ -285,7 +285,7 @@ async function startCamera() {
       () => {}
     );
   } catch(e) {
-    console.log('カメリ起動失敗:', e);
+    console.log('カメラ起動失敗:', e);
     alert('カメラの起動に失敗しました。JANコードを手入力してください。');
   }
 }
@@ -297,7 +297,7 @@ function stopCamera() {
   }
 }
 
-const scanBtn = document.querySelector('[onclick="showPage(\'page-scan\')"]');
+const scanBtn = document.getElementById('scan-page-btn');
 if (scanBtn) scanBtn.addEventListener('click', () => { setTimeout(startCamera, 300); });
 
 // ── JAN検索 ──
@@ -439,6 +439,15 @@ def search(keyword: str = Query(...), price_min: int = Query(0), price_max: int 
     with ThreadPoolExecutor(max_workers=4) as ex:
         futures = {ex.submit(lookup, item): item for item in unique_items}
         for f in as_completed(futures):
+            r = f.result()
+            if r: results.append(r)
+    return sorted(results, key=lambda x: x.profit, reverse=True)
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
+pleted(futures):
             r = f.result()
             if r: results.append(r)
     return sorted(results, key=lambda x: x.profit, reverse=True)
