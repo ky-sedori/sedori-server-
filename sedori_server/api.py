@@ -23,6 +23,7 @@ MOBILE_HTML = """<!DOCTYPE html>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="せどりツール">
 <title>せどりツール</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,sans-serif;background:#0f1117;color:#e0e0e0;min-height:100vh}
@@ -140,13 +141,7 @@ input[type=checkbox]{width:16px;height:16px;accent-color:#3b82f6}
   <div style="height:16px"></div>
   <button class="back-btn" onclick="showPage('page-home'); stopCamera()">← 戻る</button>
 
-  <div class="cam-area">
-    <video id="video" autoplay playsinline></video>
-    <div class="cam-frame">
-      <div class="cam-corner-br"></div>
-      <div class="cam-corner-tr"></div>
-    </div>
-  </div>
+  <div id="reader" style="width:100%;border-radius:16px;overflow:hidden;margin-bottom:4px;background:#000"></div>
   <p class="cam-guide">バーコードをフレーム内に合わせてください</p>
 
   <div class="card">
@@ -273,49 +268,36 @@ function renderResults() {
 }
 
 // ── バーコードスキャン ──
-let stream = null;
-let barcodeDetector = null;
-let scanInterval = null;
+let html5QrCode = null;
 
 async function startCamera() {
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    document.getElementById('video').srcObject = stream;
-
-    if ('BarcodeDetector' in window) {
-      barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a'] });
-      scanInterval = setInterval(scanFrame, 500);
-    }
+    html5QrCode = new Html5Qrcode("reader");
+    await html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 260, height: 160 } },
+      (code) => {
+        document.getElementById('janCode').value = code;
+        stopCamera();
+        searchByJan();
+      },
+      () => {}
+    );
   } catch(e) {
     console.log('カメラ起動失敗:', e);
+    alert('カメラの起動に失敗しました。JANコードを手入力してください。');
   }
 }
 
-async function scanFrame() {
-  const video = document.getElementById('video');
-  if (!video.readyState === video.HAVE_ENOUGH_DATA) return;
-  try {
-    const barcodes = await barcodeDetector.detect(video);
-    if (barcodes.length > 0) {
-      const code = barcodes[0].rawValue;
-      clearInterval(scanInterval);
-      document.getElementById('janCode').value = code;
-      searchByJan();
-    }
-  } catch(e) {}
-}
-
 function stopCamera() {
-  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-  if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+  if (html5QrCode) {
+    html5QrCode.stop().catch(() => {});
+    html5QrCode = null;
+  }
 }
-
-document.getElementById('page-scan').addEventListener('transitionend', () => {
-  if (document.getElementById('page-scan').classList.contains('active')) startCamera();
-});
 
 document.querySelector('[onclick="showPage(\'page-scan\')"]').addEventListener('click', () => {
-  setTimeout(startCamera, 100);
+  setTimeout(startCamera, 300);
 });
 
 // ── JAN検索 ──
