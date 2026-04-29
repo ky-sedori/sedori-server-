@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from typing import Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import uvicorn
 
 from scrapers import mercari, yahuoku, amazon
@@ -411,25 +412,36 @@ def search(keyword: str = Query(...), price_min: int = Query(0), price_max: int 
                 flea_items.append((it.price, it.title, it.url, "ヤフオク"))
         except Exception as e: print(f"ヤフオク: {e}")
 
-    results = []; seen = set()
-    for buy_price, flea_title, flea_url, source in flea_items:
-        key = flea_title[:20]
-        if key in seen: continue
-        seen.add(key)
-        try: amz = amazon.search_best_match(flea_title)
-        except: continue
-        if not amz: continue
-        r = calculate(buy_price=buy_price, buy_source=source, flea_url=flea_url, flea_title=flea_title,
-                      amazon_price=amz.price, amazon_title=amz.title, amazon_url=amz.url,
-                      sales_rank=amz.sales_rank, rank_category=amz.rank_category,
-                      rating=amz.rating, review_count=amz.review_count, item_size=item_size)
-        if r:
-            results.append(ProductResult(source=source, flea_title=flea_title, flea_url=flea_url,
+    seen = set(); unique_items = []
+    for item in flea_items:
+        key = item[1][:20]
+        if key not in seen:
+            seen.add(key); unique_items.append(item)
+
+    def lookup(item):
+        buy_price, flea_title, flea_url, source = item
+        try:
+            amz = amazon.search_best_match(flea_title)
+            if not amz: return None
+            r = calculate(buy_price=buy_price, buy_source=source, flea_url=flea_url, flea_title=flea_title,
+                          amazon_price=amz.price, amazon_title=amz.title, amazon_url=amz.url,
+                          sales_rank=amz.sales_rank, rank_category=amz.rank_category,
+                          rating=amz.rating, review_count=amz.review_count, item_size=item_size)
+            if not r: return None
+            return ProductResult(source=source, flea_title=flea_title, flea_url=flea_url,
                 buy_price=buy_price, amazon_title=amz.title, amazon_url=amz.url, amazon_price=amz.price,
                 profit=r.profit, profit_rate=r.profit_rate, sales_rank=amz.sales_rank,
                 rank_category=amz.rank_category, velocity_label=r.velocity_label,
                 monthly_estimate=r.monthly_estimate, rating=amz.rating, review_count=amz.review_count,
-                is_profitable=r.is_profitable))
+                is_profitable=r.is_profitable)
+        except: return None
+
+    results = []
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        futures = {ex.submit(lookup, item): item for item in unique_items}
+        for f in as_completed(futures):
+            r = f.result()
+            if r: results.append(r)
     return sorted(results, key=lambda x: x.profit, reverse=True)
 
 
