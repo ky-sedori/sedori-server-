@@ -24,7 +24,7 @@ MOBILE_HTML = """<!DOCTYPE html>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="せどりツール">
 <title>せどりツール</title>
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" async></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,sans-serif;background:#0f1117;color:#e0e0e0;min-height:100vh}
@@ -211,7 +211,7 @@ async function doSearch() {
   }
 }
 
-// ── 結果レンダリング ──
+// ── 結果ルンダリング ──
 function renderResults() {
   const profitOnly = document.getElementById('profitOnly').checked;
   const filterText = document.getElementById('filterText').value.toLowerCase();
@@ -285,7 +285,7 @@ async function startCamera() {
       () => {}
     );
   } catch(e) {
-    console.log('カメラ起動失敗:', e);
+    console.log('カメリ起動失敗:', e);
     alert('カメラの起動に失敗しました。JANコードを手入力してください。');
   }
 }
@@ -297,9 +297,8 @@ function stopCamera() {
   }
 }
 
-document.querySelector('[onclick="showPage(\'page-scan\')"]').addEventListener('click', () => {
-  setTimeout(startCamera, 300);
-});
+const scanBtn = document.querySelector('[onclick="showPage(\'page-scan\')"]');
+if (scanBtn) scanBtn.addEventListener('click', () => { setTimeout(startCamera, 300); });
 
 // ── JAN検索 ──
 async function searchByJan() {
