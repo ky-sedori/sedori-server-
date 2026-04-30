@@ -203,7 +203,7 @@ async function doSearch() {
     showPage('page-results');
     renderResults();
   } catch(e) {
-    alert('エラーが発生しました。');
+    alert('エラーが発生しました。もう一度試してください。');
   } finally {
     document.getElementById('home-loading').style.display = 'none';
     document.querySelector('#page-home .card').style.display = 'block';
@@ -439,15 +439,6 @@ def search(keyword: str = Query(...), price_min: int = Query(0), price_max: int 
     with ThreadPoolExecutor(max_workers=4) as ex:
         futures = {ex.submit(lookup, item): item for item in unique_items}
         for f in as_completed(futures):
-            r = f.result()
-            if r: results.append(r)
-    return sorted(results, key=lambda x: x.profit, reverse=True)
-
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
-pleted(futures):
             r = f.result()
             if r: results.append(r)
     return sorted(results, key=lambda x: x.profit, reverse=True)
